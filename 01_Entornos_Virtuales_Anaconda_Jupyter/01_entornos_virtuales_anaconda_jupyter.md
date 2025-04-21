@@ -24,8 +24,8 @@ Vamos a dar el primer paso hacia el uso eficiente de Python con entornos virtual
 Reemplaza "MyEnv" con el nombre que prefieras para tu entorno virtual.
 
 1. **Activar el entorno virtual**:
-- En Mac y Linux: `bash source MyEnv/bin/activate`
-- En Windows: `bash MyEnv\Scripts\activate`
+- En Mac y Linux: `source MyEnv/bin/activate`
+- En Windows: `MyEnv\Scripts\activate`
 
 Una vez activado, verás el nombre del entorno al inicio de la línea de comandos, indicando que estás dentro del entorno virtual. Ahora estás listo para instalar los paquetes necesarios en un lugar aislado y sin preocupaciones.
 
@@ -1035,8 +1035,8 @@ Una vez instalado Cookiecutter y clonado el repositorio, el siguiente paso es pe
 
 ```bash
 # Ejemplo de personalización durante el proceso de configuración
-¿Nombre del proyecto?: platziproject
-¿Nombre del repositorio?: PlatziRepo
+¿Nombre del proyecto?: project
+¿Nombre del repositorio?: Repo
 Autor: Carli Code
 Descripción: Una breve descripción
 
@@ -1106,10 +1106,6 @@ Organizar adecuadamente los directorios y archivos es clave en un proyecto de Ma
 Esta estructura no sólo permite acceder rápidamente a cada parte del proyecto, sino también sustenta una metodología clara y repetible para equipos de data science.
 
 ### ¿Cómo iniciar la creación de archivos en Cookie Cutter?
-
-![image.png](attachment:80a72697-4a09-4048-9d2e-68ab52de45fa:image.png)
-
-https://github.com/platzi/anaconda-jupyter/tree/plantilla
 
 Una vez que tengas clara la estructura, el siguiente paso es crear cada uno de los archivos mediante Cookie Cutter en Visual Studio Code:
 
