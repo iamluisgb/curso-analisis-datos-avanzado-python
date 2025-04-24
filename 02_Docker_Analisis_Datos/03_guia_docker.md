@@ -575,7 +575,7 @@ volumes:
 
 1. Utiliza comandos de Docker para:
     - Verificar la instalación de Docker
-    - Descargar (pull) una imagen de Python
+    - Descargar (pull) una imagen de Python (por ejemplo python:3.9-slim)
     - Listar las imágenes disponibles localmente
     - Ejecutar un contenedor interactivo
     - Listar contenedores en ejecución
@@ -586,3 +586,119 @@ volumes:
     - Ejecuta comandos dentro de un contenedor en ejecución
     - Copia archivos entre tu máquina y un contenedor
 3. Documenta los comandos utilizados y sus resultados.
+
+#### Solución
+
+#### 1. Verificación e imágenes
+
+```bash
+# Verificar la instalación de Docker
+docker --version
+docker info
+
+# Descargar (pull) una imagen de Python
+docker pull python:3.9-slim
+
+# Listar las imágenes disponibles localmente
+docker images
+
+```
+
+#### 2. Gestión básica de contenedores
+
+```bash
+# Ejecutar un contenedor que imprima un mensaje y se detenga
+docker run python:3.9-slim echo "¡Hola desde Docker!"
+
+# Ejecutar un contenedor en modo interactivo
+docker run -it python:3.9-slim bash
+
+# Dentro del contenedor interactivo, puedes:
+python -c "print('Esto se ejecuta dentro del contenedor')"
+ls -la
+exit  # Para salir del contenedor
+
+# Listar todos los contenedores (incluyendo los detenidos)
+docker ps -a
+
+# Ejecutar un contenedor en segundo plano que permanezca activo
+docker run -d --name contenedor-activo python:3.9-slim tail -f /dev/null
+
+# Verificar que el contenedor está en ejecución
+docker ps
+
+```
+
+### 3. Interacción con contenedores en ejecución
+
+```bash
+# Ejecutar comandos en un contenedor en ejecución
+docker exec contenedor-activo python -c "print('Ejecutando Python en un contenedor activo')"
+
+# Entrar al contenedor en modo interactivo
+docker exec -it contenedor-activo bash
+
+# Crear un archivo dentro del contenedor
+echo "Este archivo fue creado dentro del contenedor" > /tmp/archivo.txt
+
+# Salir del contenedor
+exit
+
+# Copiar un archivo desde el contenedor a la máquina local
+docker cp contenedor-activo:/tmp/archivo.txt ./archivo-desde-contenedor.txt
+
+# Copiar un archivo desde la máquina local al contenedor
+echo "Archivo desde la máquina local" > archivo-local.txt
+docker cp archivo-local.txt contenedor-activo:/tmp/
+
+# Verificar que el archivo se copió correctamente
+docker exec contenedor-activo cat /tmp/archivo-local.txt
+
+```
+
+#### 4. Limpieza
+
+```bash
+# Detener el contenedor
+docker stop contenedor-activo
+
+# Verificar que el contenedor se detuvo
+docker ps -a
+
+# Eliminar el contenedor
+docker rm contenedor-activo
+
+# Eliminar todos los contenedores detenidos
+docker container prune
+
+# Verificar que se eliminaron los contenedores
+docker ps -a
+
+```
+
+#### 5. Volúmenes y puertos
+
+```bash
+# Crear un directorio para datos
+mkdir datos
+echo "Estos son datos de prueba" > datos/test.txt
+
+# Ejecutar un contenedor montando un volumen
+docker run -it --name contenedor-volumen -v $(pwd)/datos:/datos python:3.9-slim bash
+
+# Dentro del contenedor, verificar que podemos acceder a los datos
+cat /datos/test.txt
+
+# Salir del contenedor
+exit
+
+# Ejecutar un servidor web simple (Python) en un contenedor
+mkdir web-test
+echo "<html><body><h1>Prueba de Docker</h1></body></html>" > web-test/index.html
+
+# Ejecutar contenedor con Python y servidor web simple
+docker run -d --name servidor-web -p 8080:8000 -v $(pwd)/web-test:/app python:3.9-slim python -m http.server -d /app 8000
+
+# Ahora puedes visitar http://localhost:8080 en tu navegador para ver la página
+
+```
