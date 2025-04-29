@@ -824,6 +824,396 @@ En esta segunda parte, hemos:
 
 Esta conexión entre Python y PostgreSQL es el pilar fundamental para nuestro análisis de datos. Ahora tenemos las herramientas para extraer datos de manera eficiente y segura desde nuestra base de datos.
 
-En la próxima sección, después de un breve descanso, veremos cómo transformar estos datos extraídos utilizando pandas y otras bibliotecas de análisis, y cómo visualizarlos para obtener insights valiosos.
+# Análisis de Datos con Python + PostgreSQL
 
-¿Alguna pregunta antes de tomar nuestro descanso?
+## Introducción al análisis integrado
+
+En las secciones anteriores, configuramos nuestro entorno PostgreSQL con Docker y aprendimos a establecer conexiones desde Python. Ahora llegamos a la parte más emocionante: combinar estas herramientas para realizar análisis de datos poderosos.
+
+Esta integración representa un flujo de trabajo completo: PostgreSQL nos proporciona un almacenamiento estructurado, consultas eficientes y capacidades de filtrado avanzadas, mientras que Python nos ofrece bibliotecas especializadas para procesamiento, análisis estadístico y visualización.
+
+Piensen en PostgreSQL como una bodega organizada donde guardamos nuestros datos de manera eficiente, y en Python como el taller donde transformamos esos materiales en productos terminados con valor. La combinación de ambos nos permite manejar grandes volúmenes de datos con la flexibilidad analítica que necesitamos.
+
+## Extracción de datos desde PostgreSQL a estructuras de Python
+
+El primer paso en nuestro flujo de análisis es extraer los datos desde PostgreSQL a estructuras que Python pueda manejar eficientemente. La biblioteca estrella para este trabajo es pandas, que nos proporciona el DataFrame, una estructura bidimensional similar a una hoja de cálculo pero con capacidades analíticas avanzadas.
+
+Comencemos instalando las bibliotecas necesarias:
+
+```python
+# En un entorno virtual o Jupyter Notebook
+pip install pandas sqlalchemy psycopg2-binary matplotlib seaborn
+
+```
+
+Ahora, veamos diferentes formas de cargar datos desde PostgreSQL a un DataFrame de pandas:
+
+### Método 1: Utilizando pandas.read_sql directamente
+
+```python
+import pandas as pd
+import psycopg2
+
+# Establecer conexión
+conn = psycopg2.connect(
+    host="localhost",
+    port="5432",
+    dbname="analisis_datos",
+    user="postgres",
+    password="micontraseña"
+)
+
+# Cargar datos directamente en un DataFrame
+query = "SELECT * FROM ventas.productos"
+df_productos = pd.read_sql(query, conn)
+
+# Visualizar los datos cargados
+print(df_productos.head())
+print(df_productos.info())
+
+# No olvidar cerrar la conexión
+conn.close()
+
+```
+
+### Método 2: Usando SQLAlchemy como engine
+
+```python
+from sqlalchemy import create_engine
+import pandas as pd
+
+# Crear el engine de SQLAlchemy
+engine = create_engine("postgresql://postgres:micontraseña@localhost:5432/analisis_datos")
+
+# Cargar datos con el engine
+df_clientes = pd.read_sql("SELECT * FROM ventas.clientes", engine)
+print(df_clientes.head())
+
+# Podemos ejecutar consultas más complejas
+query = """
+SELECT c.nombre as cliente, p.nombre as producto,
+       t.cantidad, t.monto_total, t.fecha_transaccion
+FROM ventas.transacciones t
+JOIN ventas.clientes c ON t.id_cliente = c.id_cliente
+JOIN ventas.productos p ON t.id_producto = p.id_producto
+ORDER BY t.fecha_transaccion DESC
+"""
+df_transacciones = pd.read_sql(query, engine)
+print(df_transacciones.head())
+
+```
+
+### Optimizando consultas para grandes volúmenes
+
+Cuando trabajamos con tablas grandes, es importante optimizar nuestras consultas:
+
+```python
+# 1. Seleccionar solo las columnas necesarias
+query = "SELECT id_producto, nombre, precio FROM ventas.productos"
+
+# 2. Filtrar en la base de datos, no en Python
+query = "SELECT * FROM ventas.productos WHERE precio > 100"
+
+# 3. Usar chunking para tablas muy grandes
+chunks = []
+for chunk in pd.read_sql("SELECT * FROM tabla_grande", engine, chunksize=10000):
+    # Procesar cada chunk
+    processed = chunk.process_somehow()
+    chunks.append(processed)
+
+# Combinar los resultados
+result = pd.concat(chunks)
+
+# 4. Usar parámetros para consultas seguras
+parametros = {'min_precio': 100, 'categoria': 'Electrónicos'}
+query = "SELECT * FROM ventas.productos WHERE precio > %(min_precio)s AND categoria = %(categoria)s"
+df = pd.read_sql(query, engine, params=parametros)
+
+```
+
+### Carga y manipulación eficiente con consultas avanzadas
+
+PostgreSQL tiene funcionalidades analíticas que podemos aprovechar:
+
+```python
+# Aprovechar funciones de agregación de PostgreSQL
+query = """
+SELECT
+    DATE_TRUNC('month', fecha_transaccion) as mes,
+    COUNT(*) as num_transacciones,
+    SUM(monto_total) as ingresos_totales,
+    AVG(monto_total) as ticket_promedio
+FROM ventas.transacciones
+GROUP BY DATE_TRUNC('month', fecha_transaccion)
+ORDER BY mes
+"""
+df_metricas_mensuales = pd.read_sql(query, engine)
+
+```
+
+Este enfoque delega el trabajo pesado a la base de datos, lo que suele ser más eficiente para operaciones de agregación sobre grandes volúmenes de datos.
+
+## Procesamiento y limpieza de datos
+
+Una vez que tenemos nuestros datos en DataFrames de pandas, podemos realizar todo tipo de operaciones de limpieza y transformación:
+
+### Exploración inicial
+
+```python
+# Dimensiones del DataFrame
+print(f"Filas: {df.shape[0]}, Columnas: {df.shape[1]}")
+
+# Tipos de datos
+print(df.dtypes)
+
+# Estadísticas básicas
+print(df.describe())
+
+# Valores faltantes
+print(df.isna().sum())
+
+```
+
+### Limpieza de datos
+
+```python
+# 1. Manejo de valores faltantes
+# Rellenar con ceros
+df['columna'].fillna(0, inplace=True)
+# O eliminar filas con valores nulos
+df.dropna(subset=['columna_importante'], inplace=True)
+
+# 2. Eliminación de duplicados
+df.drop_duplicates(inplace=True)
+
+# 3. Corrección de tipos de datos
+df['fecha'] = pd.to_datetime(df['fecha'])
+df['precio'] = df['precio'].astype(float)
+
+# 4. Normalización de texto
+df['categoria'] = df['categoria'].str.lower().str.strip()
+
+# 5. Tratamiento de valores atípicos (outliers)
+# Método IQR (Rango Intercuartil)
+Q1 = df['precio'].quantile(0.25)
+Q3 = df['precio'].quantile(0.75)
+IQR = Q3 - Q1
+df_filtrado = df[(df['precio'] >= Q1 - 1.5 * IQR) & (df['precio'] <= Q3 + 1.5 * IQR)]
+
+```
+
+### Transformación y enriquecimiento
+
+```python
+# 1. Creación de nuevas columnas
+df['margen'] = df['precio'] - df['costo']
+df['margen_porcentual'] = (df['margen'] / df['precio']) * 100
+
+# 2. Extracción de componentes de fechas
+df['mes'] = df['fecha_transaccion'].dt.month
+df['dia_semana'] = df['fecha_transaccion'].dt.day_name()
+
+# 3. Categorización
+df['rango_precio'] = pd.cut(df['precio'],
+                           bins=[0, 50, 100, 500, float('inf')],
+                           labels=['Bajo', 'Medio', 'Alto', 'Premium'])
+
+# 4. One-hot encoding para variables categóricas
+df_encoded = pd.get_dummies(df, columns=['categoria'])
+
+```
+
+### Agregaciones y análisis
+
+```python
+# 1. Agrupamiento por categoría
+by_category = df.groupby('categoria').agg({
+    'precio': ['mean', 'min', 'max', 'count'],
+    'margen': ['mean', 'sum']
+})
+
+# 2. Ventas por mes
+ventas_mes = df.groupby(df['fecha_transaccion'].dt.month)['monto_total'].sum()
+
+# 3. Tablas pivote
+tabla_pivot = pd.pivot_table(df,
+                             values='monto_total',
+                             index='cliente',
+                             columns='mes',
+                             aggfunc='sum',
+                             fill_value=0)
+
+# 4. Análisis de correlación
+matriz_corr = df[['precio', 'cantidad', 'monto_total', 'margen']].corr()
+
+```
+
+## Visualización básica de datos
+
+La visualización es crucial para comunicar los resultados de nuestros análisis. Python ofrece diversas bibliotecas para esto, siendo matplotlib y seaborn las más populares:
+
+```python
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Configuración para gráficos más estéticos
+plt.style.use('seaborn-v0_8-whitegrid')
+sns.set_palette("deep")
+
+```
+
+### Gráficos de líneas para datos temporales
+
+```python
+# Preparar datos
+ventas_mensuales = df.groupby(df['fecha_transaccion'].dt.strftime('%Y-%m'))['monto_total'].sum().reset_index()
+ventas_mensuales.columns = ['Mes', 'Ventas']
+
+# Crear gráfico
+plt.figure(figsize=(12, 6))
+sns.lineplot(x='Mes', y='Ventas', data=ventas_mensuales, marker='o', linewidth=2)
+plt.title('Evolución de Ventas Mensuales', fontsize=15)
+plt.xlabel('Mes')
+plt.ylabel('Ventas Totales ($)')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+```
+
+### Comparación entre categorías
+
+```python
+# Ventas por categoría
+ventas_categoria = df.groupby('categoria')['monto_total'].sum().sort_values(ascending=False)
+
+# Gráfico de barras
+plt.figure(figsize=(10, 6))
+sns.barplot(x=ventas_categoria.index, y=ventas_categoria.values)
+plt.title('Ventas Totales por Categoría de Producto', fontsize=15)
+plt.xlabel('Categoría')
+plt.ylabel('Ventas Totales ($)')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+```
+
+### Distribuciones
+
+```python
+# Distribución de precios
+plt.figure(figsize=(10, 6))
+sns.histplot(df['precio'], bins=20, kde=True)
+plt.title('Distribución de Precios de Productos', fontsize=15)
+plt.xlabel('Precio ($)')
+plt.ylabel('Frecuencia')
+plt.tight_layout()
+plt.show()
+
+```
+
+### Relaciones entre variables
+
+```python
+# Relación precio vs. cantidad vendida
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='precio', y='cantidad', data=df, hue='categoria', size='monto_total', sizes=(20, 200))
+plt.title('Relación entre Precio y Cantidad Vendida', fontsize=15)
+plt.xlabel('Precio ($)')
+plt.ylabel('Cantidad Vendida')
+plt.tight_layout()
+plt.show()
+
+```
+
+### Heatmaps para correlaciones
+
+```python
+# Matriz de correlación
+plt.figure(figsize=(8, 6))
+sns.heatmap(matriz_corr, annot=True, cmap='coolwarm', vmin=-1, vmax=1)
+plt.title('Correlación entre Variables', fontsize=15)
+plt.tight_layout()
+plt.show()
+
+```
+
+### Combinando PostgreSQL, pandas y visualización
+
+Veamos un ejemplo completo que integra todo lo que hemos visto:
+
+```python
+import pandas as pd
+from sqlalchemy import create_engine
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Conexión a la base de datos
+engine = create_engine("postgresql://postgres:micontraseña@localhost:5432/analisis_datos")
+
+# Consulta SQL avanzada para análisis de ventas por cliente/categoría
+query = """
+SELECT
+    c.nombre as cliente,
+    p.categoria,
+    COUNT(t.id_transaccion) as num_compras,
+    SUM(t.cantidad) as unidades_totales,
+    SUM(t.monto_total) as monto_total,
+    AVG(t.monto_total) as ticket_promedio,
+    MIN(t.fecha_transaccion) as primera_compra,
+    MAX(t.fecha_transaccion) as ultima_compra
+FROM ventas.transacciones t
+JOIN ventas.clientes c ON t.id_cliente = c.id_cliente
+JOIN ventas.productos p ON t.id_producto = p.id_producto
+GROUP BY c.nombre, p.categoria
+ORDER BY monto_total DESC
+"""
+
+# Cargar datos en DataFrame
+df_analisis = pd.read_sql(query, engine)
+
+# Procesamiento y limpieza
+df_analisis['dias_entre_compras'] = (pd.to_datetime(df_analisis['ultima_compra']) -
+                                     pd.to_datetime(df_analisis['primera_compra'])).dt.days
+df_analisis['compras_por_dia'] = df_analisis['num_compras'] / df_analisis['dias_entre_compras'].replace(0, 1)
+
+# Crear visualizaciones
+plt.figure(figsize=(12, 8))
+
+# Subplot 1: Top clientes por monto total
+plt.subplot(2, 2, 1)
+top_clientes = df_analisis.groupby('cliente')['monto_total'].sum().sort_values(ascending=False).head(5)
+sns.barplot(x=top_clientes.values, y=top_clientes.index)
+plt.title('Top 5 Clientes por Ventas')
+plt.xlabel('Ventas Totales ($)')
+
+# Subplot 2: Distribución de ventas por categoría
+plt.subplot(2, 2, 2)
+cat_ventas = df_analisis.groupby('categoria')['monto_total'].sum()
+plt.pie(cat_ventas, labels=cat_ventas.index, autopct='%1.1f%%', startangle=90)
+plt.title('Distribución de Ventas por Categoría')
+
+# Subplot 3: Relación entre frecuencia de compra y monto
+plt.subplot(2, 1, 2)
+sns.scatterplot(data=df_analisis, x='compras_por_dia', y='ticket_promedio',
+                hue='categoria', size='unidades_totales', sizes=(20, 200))
+plt.title('Relación entre Frecuencia de Compra y Ticket Promedio')
+plt.xlabel('Compras por Día')
+plt.ylabel('Ticket Promedio ($)')
+
+plt.tight_layout()
+plt.show()
+
+# Guardar resultados del análisis en la base de datos
+df_resultados = df_analisis[['cliente', 'categoria', 'monto_total', 'ticket_promedio']]
+df_resultados.to_sql('resultados_analisis', engine, schema='ventas', if_exists='replace', index=False)
+
+```
+
+Este ejemplo completo muestra cómo podemos:
+
+1. Extraer datos con una consulta SQL compleja
+2. Procesar y transformar los datos en pandas
+3. Crear visualizaciones informativas
+4. Guardar los resultados de nuevo en la base de datos
