@@ -702,3 +702,18 @@ docker run -d --name servidor-web -p 8080:8000 -v $(pwd)/web-test:/app python:3.
 # Ahora puedes visitar http://localhost:8080 en tu navegador para ver la página
 
 ```
+
+`docker run`: Comando básico para crear y arrancar un nuevo contenedor.
+
+- `d`: (detached) Ejecuta el contenedor en segundo plano y muestra el ID del contenedor.
+- `-name servidor-web`: Asigna el nombre "servidor-web" al contenedor para referenciarlo fácilmente.
+- `p 8080:8000`: Mapea el puerto 8080 del host (tu máquina) al puerto 8000 del contenedor. Esto significa que podrás acceder al servidor web a través de http://localhost:8080 en tu navegador.
+- `v $(pwd)/web-test:/app`: Crea un volumen que vincula el directorio "web-test" de tu directorio actual (`$(pwd)` obtiene la ruta del directorio actual) con el directorio "/app" dentro del contenedor. Cualquier cambio en estos directorios se sincronizará en ambas direcciones.
+
+`python:3.9-slim`: La imagen de Docker que se usará para crear el contenedor. En este caso, es una versión ligera de Python 3.9.
+
+`python -m http.server -d /app 8000`: El comando que se ejecutará dentro del contenedor:
+
+- `python -m http.server`: Inicia el servidor web simple incluido en Python
+- `d /app`: Especifica el directorio de donde servir los archivos
+- `8000`: El puerto en el que escuchará el servidor dentro del contenedor
